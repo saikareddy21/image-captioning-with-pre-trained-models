@@ -1,0 +1,55 @@
+# Install necessary libraries
+!pip install tensorflow numpy pillow transformers
+
+# Import Libraries
+import tensorflow as tf
+from tensorflow.keras.applications import InceptionV3
+from tensorflow.keras.models import Model
+from tensorflow.keras.preprocessing import image
+import numpy as np
+import cv2
+from google.colab import files
+from transformers import BlipProcessor, BlipForConditionalGeneration
+
+# Load Pretrained CNN Model (Feature Extractor)
+base_model = InceptionV3(weights='imagenet')
+model = Model(inputs=base_model.input, outputs=base_model.get_layer('avg_pool').output)
+
+# Function to preprocess image
+def preprocess_image(img_path):
+    img = image.load_img(img_path, target_size=(299, 299))
+    img = image.img_to_array(img)
+    img = np.expand_dims(img, axis=0)
+    img = tf.keras.applications.inception_v3.preprocess_input(img)
+    return img
+
+# Function to extract features from an image
+def extract_features(img_path):
+    img = preprocess_image(img_path)
+    features = model.predict(img)
+    return features
+
+# Function to generate a caption using a pre-trained model
+def generate_caption(img_path):
+    processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
+    model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
+
+    img = image.load_img(img_path, target_size=(299, 299))
+    img = image.img_to_array(img)
+    img = img.astype(np.uint8)
+
+    inputs = processor(images=img, return_tensors="pt")
+    out = model.generate(**inputs)
+    caption = processor.decode(out[0], skip_special_tokens=True)
+    return caption
+
+# Upload an image manually
+print("Upload an image:")
+uploaded = files.upload()
+
+# Get the image file name
+img_filename = list(uploaded.keys())[0]
+
+# Generate a meaningful text description
+caption = generate_caption(img_filename)
+print("Generated Caption:", caption)
